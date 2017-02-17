@@ -6,5 +6,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/eu.quanticol.carma.core.ui"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/eu.quanticol.carma.simulator"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/eu.quanticol.ms"/>
+	<classpathentry kind="lib" path="C:/Users/Anastasis/Desktop/multivesta-carma.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
