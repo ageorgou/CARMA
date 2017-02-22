@@ -196,6 +196,8 @@ public class CARMACommandLine {
 		boolean unrecognised = false;
 		String modelFile = args[1];
 		String queryFile = args[2];
+		double a = 0;
+		boolean aSet = false;
 		for (int i = 3; i < args.length; i++) {
 			switch(args[i]) {
 			case "-o":
@@ -203,10 +205,22 @@ public class CARMACommandLine {
 			case "-output":
 				if (i+1 <= args.length) {
 					outputFolder = args[++i];
-				}
-				else
+				} else
 					System.out.println("Output flag was used but no output folder given.");
 				break;
+			case "-a":
+				if (i+1 <= args.length) {
+					try {
+						a = Double.valueOf(args[++i]);
+						aSet = true;
+					} catch (NumberFormatException e) {
+						System.out.println("Could not understand confidence level (" + args[i] +
+								"). Ignoring.");
+					}
+				} else
+					System.out.println("Confidence flag was used but no confidence level given.");
+				break;
+
 			case "-quiet":
 			case "-q":
 				verbose = false;
@@ -219,7 +233,11 @@ public class CARMACommandLine {
 		}
 		if (unrecognised)
 			printHelp();
-		return new MultivestaExperiment(modelFile,queryFile,outputFolder);
+		MultivestaExperiment exp = new MultivestaExperiment(modelFile,queryFile,outputFolder);
+		if (aSet) {
+			exp.setConfidence(a);
+		}
+		return exp; 
 	}
 
 	
@@ -756,7 +774,7 @@ public class CARMACommandLine {
 			performSimulation();
 			break;
 		case Multivesta:
-			/*
+			
 			MultivestaExperiment exp = parseMultivestaArguments(args);
 			try {
 				exp.run();
@@ -764,8 +782,8 @@ public class CARMACommandLine {
 				System.out.println("Could not run MultiVeStA experiment.\nError:");
 				e.printStackTrace();
 			}
-			*/
-			System.out.println("MultiVeStA integration coming soon.");
+			
+			//System.out.println("MultiVeStA integration coming soon.");
 			break;
 		case Summary:
 			printSummary(args);

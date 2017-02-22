@@ -21,6 +21,8 @@ public class MultivestaExperiment {
 	private String modelFile;
 	private String queryFile;
 	private String output;
+	private Map<String,String> config;
+
 	
 	public MultivestaExperiment(String modelFile, String queryFile) {
 		this(modelFile,queryFile,null);
@@ -30,17 +32,16 @@ public class MultivestaExperiment {
 		this.modelFile = modelFile;
 		this.queryFile = queryFile;
 		this.output = output;
+		this.config = defaultConfiguration();
 	}
 	
 	public void run() throws IOException {
-		Map<String,String> config = defaultConfiguration();
 		config.put("-m", getModelName());
 		config.put("-f", queryFile);
 		if (output != null) {
 			config.put("-op", output);
 		}
 		//config.put("-jn", getMultivestaJarLocation());
-		config.put("-jn", "aaaaa!");
 		config.put("-sd","eu.quanticol.carma.multivesta.CARMASimulatorState");
 		EntryPointMultiVestaCARMA.main(paramSequence(config,true));
 		//vesta.NewVesta.invokeClient(paramSequence(config,false));
@@ -102,6 +103,10 @@ public class MultivestaExperiment {
 		config.put("-osws", "ONESTEP");
 		config.put("-sots", "12343");
 		return config;
+	}
+	
+	public void setConfidence(double a) {
+		config.put("-a", String.valueOf(a));
 	}
 	
 	private static String[] paramSequence(Map<String,String> config, boolean includeC) {
