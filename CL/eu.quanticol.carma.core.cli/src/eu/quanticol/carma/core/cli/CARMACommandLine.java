@@ -60,6 +60,7 @@ public class CARMACommandLine {
 	static boolean replicationsSet = false;
 	static int nReplications;
 	private static long timeElapsed = 0; // time in nanoseconds
+	private static double executionTime; // time in milliseconds, only counting simulations
 	
 	private static enum Mode {Simulation, Multivesta, Help, Summary, None};
 	
@@ -440,6 +441,7 @@ public class CARMACommandLine {
 			}
 			long stopTime = System.nanoTime();
 			timeElapsed  = stopTime - startTime;
+			executionTime = sim.getExecutionTime();
 			report(String.format("Time elapsed: %s for %d replications",
 					formatTime(timeElapsed),sim.getReplications()));
 			// ...and save output
@@ -478,8 +480,7 @@ public class CARMACommandLine {
 		//calls = subtasks.stream().map(t -> makeCallable(t))
 		//		.collect(Collectors.toList());
 		// or simply:
-		List<? extends Callable<Object>> calls = new ArrayList<Callable<Object>>();
-		calls = subtasks;
+		List<? extends Callable<Object>> calls = subtasks;
 		try {
 			executor.invokeAll(calls);
 		}
@@ -524,8 +525,14 @@ public class CARMACommandLine {
 		
 		// and create the final summary simulation
 		CommandLineSimulation finalSim = sim.copy();
-		//TODO change starting, total and average time in constructor of outcome?
-		SimulationOutcome outcome = new SimulationOutcome("",0,0,allResults);
+		// use the average execution time across all batches for the summary
+		double time = 0;
+		for (CommandLineSimulation task : subtasks) {
+			time += task.getExecutionTime();
+		}
+		time /= subtasks.size();
+		SimulationOutcome outcome = new SimulationOutcome("", time, 
+				time / sim.getReplications(), allResults);
 		List<SimulationOutcome> finalResult = new ArrayList<SimulationOutcome>(1);
 		finalResult.add(outcome);
 		finalSim.setResults(finalResult);
@@ -598,6 +605,18 @@ public class CARMACommandLine {
 			System.err.println("Could not create file: " + timeFile + ".");
 		}
 		
+		// Same for execution time (simulations only):
+		timeFile = outputBase.resolve("simulationTimeInSeconds");
+		if (Files.exists(timeFile)) {
+			warn("will overwrite file " + timeFile + ".");
+		}
+		try (PrintStream out = new PrintStream(timeFile.toFile())) {
+			double time_s = executionTime / 1e3;
+			out.print(String.format("%.5f",time_s));
+		} catch (FileNotFoundException e) {
+			System.err.println("Could not create file: " + timeFile + ".");
+		}
+
 		// Copy original model:
 		Path originalPath = Paths.get(sim.getModelLocation());
 		Path copyPath = outputBase.resolve(originalPath.getFileName());
@@ -901,6 +920,7 @@ public class CARMACommandLine {
 		multithreaded = false;
 		nThreads = 1;
 		timeElapsed = 0;
+		executionTime = 0;
 		seedSet = false;
 		deadlineSet = false;
 		replicationsSet = false;
