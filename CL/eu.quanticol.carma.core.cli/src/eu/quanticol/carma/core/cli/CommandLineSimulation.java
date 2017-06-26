@@ -61,6 +61,8 @@ public class CommandLineSimulation implements Callable<Object>, Runnable {
 	
 	private Long seed;
 	
+	private double executionTime;
+	
 
 	public CommandLineSimulation(String name, CarmaModel model, String system, int replications,
 			double simulationTime, int samplings, List<MeasureData> measures, String modelName) {
@@ -214,6 +216,10 @@ public class CommandLineSimulation implements Callable<Object>, Runnable {
 		
 		DateFormat dateFormat1 = new SimpleDateFormat("dd/MM/yyyy  HH:mm:ss");
 	    String tag = dateFormat1.format(Calendar.getInstance().getTime());
+	    // NB: We measure the time needed for simulations using System.currentTimeMillis(),
+	    // which is not as accurate as System.nanoTime(). However, the plugin also uses
+	    // the former, so for the sake of comparing between the two, we kept it here.
+	    // The total reported time (in the main CARMACommandLine class) uses nanoTime().
 		double startTime = System.currentTimeMillis();
 		
 		// run the simulation and collect the results
@@ -260,9 +266,13 @@ public class CommandLineSimulation implements Callable<Object>, Runnable {
 	    if (reportProgress)
 	    	System.out.println();
 	    double endTime = System.currentTimeMillis();
-	    double totalTime = endTime-startTime;
-		addSimulationResult(new SimulationOutcome(tag, totalTime, totalTime/replications,
+	    executionTime = endTime-startTime;
+		addSimulationResult(new SimulationOutcome(tag, executionTime, executionTime/replications,
 				sc.getSimulationTimeSeries(replications)));   
+	}
+	
+	public double getExecutionTime() {
+		return executionTime;
 	}
 	
 	public Void call() {

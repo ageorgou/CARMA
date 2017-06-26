@@ -696,7 +696,7 @@ class CARMAValidator extends AbstractCARMAValidator {
 			var t1 = e.left.typeOf
 			var t2 = e.right.typeOf
 			if (!t1.isBoolean&&!t1.isSet&&!t1.isCompatibleWith(t2)) {
-				error("Type Error: expected "+t1+" is "+t2,CarmaPackage::eINSTANCE.or_Right,ERROR_Expression_type_error);			
+				error("Type Error: expected "+t1+" is "+t2,CarmaPackage::eINSTANCE.and_Right,ERROR_Expression_type_error);			
 			}
 		}
 		
