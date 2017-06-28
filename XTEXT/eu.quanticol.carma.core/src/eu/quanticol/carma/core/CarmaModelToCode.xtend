@@ -683,7 +683,7 @@ class CarmaModelToCode {
 	}
 
 	def dispatch CharSequence expressionToCode( Not e ) {
-		'''( «e.expression.expressionToCode» )'''
+		'''( ! «e.expression.expressionToCode» )'''
 	}
 
 	def dispatch CharSequence expressionToCode( UnaryPlus e ) {
