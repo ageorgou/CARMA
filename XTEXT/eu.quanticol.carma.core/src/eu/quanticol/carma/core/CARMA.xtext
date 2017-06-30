@@ -463,6 +463,7 @@ ComponentDefinition hidden(ML_COMMENT,SL_COMMENT,WS):
 	store=StoreBlock
 	processes=ProcessesBlock
 	initBlock=InitBlock
+	(constraintBlock=ConstraintBlock)?
 	"}"
 ;
 
@@ -478,6 +479,18 @@ AttributeDeclaration:
 	{AttributeConstDeclaration} "const" name=ID (":="|"=") value=Expression
 	| {AttibuteVarDeclaration} ("attrib")? (type=BasicType)? name=ID  (":="|"=") value=Expression
 	;
+
+ConstraintBlock hidden(ML_COMMENT,SL_COMMENT,WS):
+	{ConstraintBlock}
+	"constraints" 
+	"{" 
+		(constraints+=ConstraintDeclaration ";" )*
+	"}"
+;
+
+ConstraintDeclaration:
+	{ConstraintDeclaration} name=ID "{" constraint=Expression "}"
+;
 	
 ProcessesBlock hidden(ML_COMMENT,SL_COMMENT,WS):
 	{ProcessesBlock}
@@ -546,6 +559,7 @@ ComponentBlockInstantiation hidden(ML_COMMENT,SL_COMMENT,WS):
 	'(' (arguments+=Range (',' arguments+=Range)* )? ')'
 	('@' location=Atomic )?
 	("<"population=Atomic ">")?
+	("following" constraints+=ID (',' constraints+=ID)* )?
 ;
 
 ComponentBlockFor hidden(ML_COMMENT,SL_COMMENT,WS):
