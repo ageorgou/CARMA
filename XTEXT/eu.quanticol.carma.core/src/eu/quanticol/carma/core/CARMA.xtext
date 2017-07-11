@@ -20,6 +20,7 @@ Element:
 	| SystemDefinition
 	| CollectiveDefinition
 	| SpaceDefinition
+	| GoalDefinition
 ;
 
 SpaceDefinition:
@@ -927,6 +928,10 @@ MeasureDefinition hidden(ML_COMMENT,SL_COMMENT,WS):
 //	{MeasureVariableDeclaration} name=ID	":="	assign= Range
 //;
 
+
+GoalDefinition hidden(ML_COMMENT,SL_COMMENT,WS):
+	"goal" name=ID "{" expression=Expression  "}" ';'
+;
 	
 ////////////////////////////////////////////////////ENVIRONMENT	
 Environment hidden(ML_COMMENT,SL_COMMENT,WS):
