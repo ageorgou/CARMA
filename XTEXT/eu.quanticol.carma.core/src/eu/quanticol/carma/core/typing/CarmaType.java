@@ -24,6 +24,7 @@ public abstract class CarmaType {
 	public final static CarmaProcessType PROCESS_TYPE = new CarmaProcessType( );
 	public final static CarmaLocationType LOCATION_TYPE = new CarmaLocationType();	
 	public final static CarmaNoneType NONE_TYPE = new CarmaNoneType();
+	public final static CarmaEdgeType EDGE_TYPE = new CarmaEdgeType();
 	
 	public static CarmaType createRecordType( RecordDefinition reference ) {
 		return new CarmaRecordType( reference );
@@ -63,7 +64,7 @@ public abstract class CarmaType {
 		FUNCTION ,
 		TUPLE ,
 		NONE ,
-		ERROR
+		ERROR, EDGE
 	}
 	
 	private final TypeCode code;
@@ -122,6 +123,11 @@ public abstract class CarmaType {
 	
 	public boolean isLocation() {
 		return code == TypeCode.LOCATION;
+	}
+	
+	
+	public boolean isEdge() {
+		return code == TypeCode.EDGE;
 	}
 	
 	public CarmaErrorType asError() {
@@ -196,14 +202,12 @@ public abstract class CarmaType {
 	public boolean isCompatibleWith( CarmaType t ) {
 		if (t == null) {
 			return false;
-		} else {
-			return this.equals(t);
+		} 
+		if (this.equals(t)) {
+			return true;
 		}
-//		if (this.equals(t)) {
-//			return true;
-//		}
-//		return (((this.code == TypeCode.INTEGER)&&(t.code==TypeCode.REAL))
-//				||((this.code == TypeCode.REAL)&&(t.code == TypeCode.INTEGER)));
+		return (((this.code == TypeCode.INTEGER)&&(t.code==TypeCode.REAL))
+				||((this.code == TypeCode.REAL)&&(t.code == TypeCode.INTEGER)));
 	}
 	
 

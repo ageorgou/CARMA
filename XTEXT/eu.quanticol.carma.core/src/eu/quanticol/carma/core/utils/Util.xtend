@@ -75,6 +75,8 @@ import java.util.HashSet
 import java.util.HashMap
 import eu.quanticol.carma.core.carma.RandomExpression
 import eu.quanticol.carma.core.carma.ForLoop
+import eu.quanticol.carma.core.carma.UpdateArrayElement
+import eu.quanticol.carma.core.carma.UpdateCollectionRemove
 
 class Util {
 
@@ -305,7 +307,7 @@ class Util {
 		}
 	}
 
-	def  attributeName( String name , ReferenceContext context ) {
+	def  attributeName( CharSequence name , ReferenceContext context ) {
 		switch context {
 			case NONE: '''«ATTR_PREFIX»«name»'''
 			case MY: '''«MY_PREFIX»«name»'''
@@ -337,24 +339,26 @@ class Util {
 			LocationVariable: element.name.variableName
 			LoopingVariable: element.name.variableName
 			MeasureDefinition: element.name.measureName
-
+			NamedNode: '''CarmaSystem.getCurrentSpaceModel().getVertex( "«element.name»" )'''
 		}
 	}
 	
 	def  referencedAttibutes( Expression e ) {
 		val LinkedList<AttributeDeclaration> result = newLinkedList()
-		if (e instanceof Reference) {
-			if (e.reference instanceof AttributeDeclaration) {
-				result.add( e.reference as AttributeDeclaration )
+		if (e != null) {
+			if (e instanceof Reference) {
+				if (e.reference instanceof AttributeDeclaration) {
+					result.add( e.reference as AttributeDeclaration )
+				}
 			}
+			e.getAllContentsOfType(typeof(Reference)).map[ 
+				it.reference
+			].filter(typeof(AttributeDeclaration)).forEach[ a |
+				if (result.forall[ it.name != a.name ]) {
+					result.add( a )
+				}
+			]			
 		}
-		e.getAllContentsOfType(typeof(Reference)).map[ 
-			it.reference
-		].filter(typeof(AttributeDeclaration)).forEach[ a |
-			if (result.forall[ it.name != a.name ]) {
-				result.add( a )
-			}
-		]
 		result
 	} 
 
@@ -372,26 +376,69 @@ class Util {
 		switch c {
 			UpdateAssignment: c.expression
 			UpdateCollectionAdd: c.expression
+			UpdateArrayElement: c.expression
 		}
 	}
 	
 	def  referencedAttributes( Update e ) {
 		val LinkedList<AttributeDeclaration> result = newLinkedList()
-		e.updateAssignment.map[ it.expression ].map[ it.referencedAttibutes ].flatten.forEach[ a |
-			if (result.forall[ it.name != a.name ]) {
-				result.add( a )
-			}
-		]
+		var referenced = e.updateAssignment
+			.map[ it.expression ]
+			.map[ it.referencedAttibutes ]
+			.flatten
+		referenced = referenced+e.updateAssignment
+			.filter(typeof(UpdateArrayElement))
+			.map[ it.target ]
+			.filter(typeof(StoreAttribute))
+			.map[ it.reference ]
+		referenced = referenced+e.updateAssignment
+			.filter(typeof(UpdateCollectionAdd))
+			.map[ it.target ]
+			.filter(typeof(StoreAttribute))
+			.map[ it.reference ]
+		referenced = referenced+e.updateAssignment
+			.filter(typeof(UpdateCollectionRemove))
+			.map[ it.target ]
+			.filter(typeof(StoreAttribute))
+			.map[ it.reference ]
+		referenced.forEach[ a |
+				if (result.forall[ it.name != a.name ]) {
+					result.add( a )
+				}
+			]
 		result
 	}
+	
 
 	def  myAttributes( Update e ) {
 		val LinkedList<AttributeDeclaration> result = newLinkedList()
-		e.updateAssignment.map[ 
+		var referenced = e.updateAssignment.map[ 
 			it.expression
 		].map[ 
 			it.myAttributes
-		].flatten.forEach[ a |
+		].flatten
+		referenced = referenced + e.updateAssignment
+			.filter(typeof(UpdateArrayElement))
+			.map[ it.target ]
+			.filter(typeof(MyContext))
+			.map[ it.attribute ]
+			.filter(typeof(StoreAttribute))
+			.map[ it.reference ]
+		referenced = referenced + e.updateAssignment
+			.filter(typeof(UpdateCollectionAdd))
+			.map[ it.target ]
+			.filter(typeof(MyContext))
+			.map[ it.attribute ]
+			.filter(typeof(StoreAttribute))
+			.map[ it.reference ]
+		referenced = referenced + e.updateAssignment
+			.filter(typeof(UpdateCollectionRemove))
+			.map[ it.target ]
+			.filter(typeof(MyContext))
+			.map[ it.attribute ]
+			.filter(typeof(StoreAttribute))
+			.map[ it.reference ]
+		referenced.forEach[ a |
 			if (result.forall[ it.name != a.name ]) {
 				result.add( a )
 			}
@@ -412,19 +459,21 @@ class Util {
 
 	def  myAttributes( Expression e ) {
 		val LinkedList<AttributeDeclaration> result = newLinkedList()
-		if (e instanceof MyContext) {
-			var a = e.attribute
-			if (a instanceof StoreAttribute) {
-				result.add( a.reference )
+		if (e != null) {
+			if (e instanceof MyContext) {
+				var a = e.attribute
+				if (a instanceof StoreAttribute) {
+					result.add( a.reference )
+				}
 			}
+			e.getAllContentsOfType(typeof(MyContext)).map[
+				it.attribute
+			].filter(typeof(StoreAttribute)).map[it.reference].forEach[ a |
+				if (result.forall[ it.name != a.name ]) {
+					result.add( a )
+				}
+			]			
 		}
-		e.getAllContentsOfType(typeof(MyContext)).map[
-			it.attribute
-		].filter(typeof(StoreAttribute)).map[it.reference].forEach[ a |
-			if (result.forall[ it.name != a.name ]) {
-				result.add( a )
-			}
-		]
 		result
 	}
 	
@@ -721,7 +770,11 @@ class Util {
 	}
 
 	def dispatch Iterable<NamedNode>  declaredNamedNodes( NodeIfThenElseCommand n ) {
-		n.thenBlock.declaredNamedNodes+n.elseBlock.declaredNamedNodes
+		if (n.elseBlock != null) {
+			n.thenBlock.declaredNamedNodes+n.elseBlock.declaredNamedNodes
+		} else {
+			n.thenBlock.declaredNamedNodes
+		}
 	}
 
 	def dispatch Iterable<NamedNode>  declaredNamedNodes( NodeForLoop n ) {

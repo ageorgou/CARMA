@@ -101,6 +101,19 @@ import eu.quanticol.carma.core.carma.Activity
 import eu.quanticol.carma.core.carma.ProcessExpressionChoice
 import eu.quanticol.carma.core.carma.ProcessExpressionGuard
 import eu.quanticol.carma.core.carma.ProcessExpressionAction
+import eu.quanticol.carma.core.carma.UpdateArrayElement
+import eu.quanticol.carma.core.carma.TargetAssignmentList
+import eu.quanticol.carma.core.carma.PostFunction
+import eu.quanticol.carma.core.carma.PreFunction
+import eu.quanticol.carma.core.carma.PoSetExpression
+import eu.quanticol.carma.core.carma.PreSetExpression
+import eu.quanticol.carma.core.carma.InEdgesExpression
+import eu.quanticol.carma.core.carma.OutEdgesExpression
+import eu.quanticol.carma.core.carma.EdgeSourceExpression
+import eu.quanticol.carma.core.carma.EdgeTargetExpression
+import eu.quanticol.carma.core.carma.NodeForEach
+import eu.quanticol.carma.core.carma.ConnectionForEach
+import eu.quanticol.carma.core.carma.WeightedChoice
 
 class CARMAValidator extends AbstractCARMAValidator {
 	
@@ -412,6 +425,123 @@ class CARMAValidator extends AbstractCARMAValidator {
 
 	}
 	
+	public static val ERROR_UpdateArrayElement_error 	= "ERROR_UpdateArrayElement_error"
+	
+	@Check
+	def check_ERROR_AttributeArrayElement_type_error( UpdateArrayElement assignment ) {
+		var targetType = assignment ?. target ?. typeOf
+		if ((targetType != null) && !targetType.error && !targetType.none && !targetType.list) {
+			error("Type Error: Indexed element should be a list, instead is "+ targetType, CarmaPackage::eINSTANCE.updateArrayElement_Target,ERROR_UpdateArrayElement_error);
+		}
+		var indexTypes = (assignment ?. indexes).map[typeOf]
+		if (indexTypes.exists[! it?.integer]) {
+			error("Type Error: Index expression should be INT", CarmaPackage::eINSTANCE.updateArrayElement_Indexes,ERROR_UpdateArrayElement_error);
+		}
+		var targetDepth = targetType ?. depth
+		var actualDepth = assignment.indexes.size
+		if (actualDepth > targetDepth) {
+			error("Type Error: Assignment target can be indexed up to "  + targetDepth
+				 + " times but here used with " + actualDepth + " levels.",
+				 CarmaPackage::eINSTANCE.updateArrayElement_Indexes,ERROR_UpdateArrayElement_error);
+		}
+		var expectedType = targetType ?. typeAtDepth(actualDepth)
+		var actualType = assignment ?. expression ?. typeOf
+		if ((expectedType != null)&&(actualType !=null)&&(!actualType.error)&&(!actualType.none)&&(!expectedType.mostGeneral(actualType).equals(expectedType))) {
+			error("Type Error: Expected "+expectedType+" is "+actualType,CarmaPackage::eINSTANCE.updateArrayElement_Expression,ERROR_UpdateArrayElement_error);			
+		}
+	}
+	
+	def CarmaType finalType(CarmaType t) {
+		switch(t) {
+			case t.list : finalType(t.asList.elementsType)
+			default : t
+		}
+	}
+		
+	def int depth(CarmaType t) {
+		switch(t) {
+			case t.list : depth(t.asList.elementsType) + 1
+			default : 0
+		}
+	}
+	
+	def typeAtDepth(CarmaType type, int depth) {
+		var i = 0
+		var t = type
+		try {
+			while (i < depth) {
+				t = t.asList.elementsType
+				i += 1
+			}
+		} catch (ClassCastException e) {
+			return null
+		}
+		return t
+	}
+	
+	public static val ERROR_UpdateCollectionAdd_error 	= "ERROR_UpdateCollectionAdd_error"
+	@Check
+	def check_ERROR_UpdateCollectionAdd_type_error( UpdateCollectionAdd assignment ) {
+		var targetType = assignment ?. target ?. typeOf
+		if ((targetType != null) && !targetType.list && !targetType.set) {
+			error("Type Error: Elements can only be added to lists or sets, not "+ targetType,
+				  CarmaPackage::eINSTANCE.updateCollectionAdd_Target,ERROR_UpdateCollectionAdd_error);
+		}
+		var expectedType = 
+			switch(targetType) {
+				case targetType.list : targetType.asList.elementsType
+				case targetType.set : targetType.asSet.elementsType
+				default : null
+			}
+		var actualType = assignment ?. expression ?. typeOf
+		if ((expectedType != null ) && (actualType != null)
+			&& !actualType.error && (!expectedType.mostGeneral(actualType).equals(expectedType))) {
+				error("Type Error: Expected "+expectedType+" is "+actualType,
+				  CarmaPackage::eINSTANCE.updateCollectionAdd_Expression,ERROR_UpdateCollectionAdd_error);
+			}
+	}
+	
+	public static val ERROR_UpdateCollectionRemove_error 	= "ERROR_UpdateCollectionRemove_error"
+	@Check
+	def check_ERROR_UpdateCollectionRemove_type_error( UpdateCollectionRemove assignment ) {
+		var targetType = assignment ?. target ?. typeOf
+		if ((targetType != null) && !targetType.list && !targetType.set) {
+			error("Type Error: Elements can only be removed from lists or sets, not "+ targetType,
+				  CarmaPackage::eINSTANCE.updateCollectionRemove_Target,
+				  ERROR_UpdateCollectionRemove_error);
+		}
+		var expectedType = 
+			switch(targetType) {
+				case targetType.list : targetType.asList.elementsType
+				case targetType.set : targetType.asSet.elementsType
+				default : null
+			}
+		var actualType = assignment ?. expression ?. typeOf
+		if ((expectedType != null ) && (actualType != null)
+			&& !actualType.error && (!expectedType.mostGeneral(actualType).equals(expectedType))) {
+				error("Type Error: Expected "+expectedType+" is "+actualType,
+				  CarmaPackage::eINSTANCE.updateCollectionRemove_Expression,
+				  ERROR_UpdateCollectionRemove_error);
+			}
+	}
+	
+	
+	public static val ERROR_TargetAssignmentList_type_error 	= "ERROR_TargetAssignmentList_type_error"
+	
+	@Check
+	def check_ERROR_TargetAssignmentList_type_error( TargetAssignmentList assignment ) {
+		var targetType = assignment ?. target ?. typeOf
+		if ((targetType != null) && !targetType.error && !targetType.none && !targetType.list) {
+			error("Type Error: Indexed element should be a list, instead is "+ targetType, CarmaPackage::eINSTANCE.targetAssignmentList_Target,ERROR_TargetAssignmentList_type_error);
+		}
+		var indexType = assignment ?. index ?. typeOf
+		if ((indexType != null) && !indexType.integer) {
+			error("Type Error: Index expression should be INT", CarmaPackage::eINSTANCE.targetAssignmentList_Index,ERROR_TargetAssignmentList_type_error);
+		}
+		// match between assigned type and expected type is checked for AssignmentCommand
+	}
+	
+	
 	public static val ERROR_Unbound_UntypedVariable_error 	= "ERROR_Unbound_UntypedVariable"
 	
 	@Check
@@ -566,7 +696,7 @@ class CARMAValidator extends AbstractCARMAValidator {
 			var t1 = e.left.typeOf
 			var t2 = e.right.typeOf
 			if (!t1.isBoolean&&!t1.isSet&&!t1.isCompatibleWith(t2)) {
-				error("Type Error: expected "+t1+" is "+t2,CarmaPackage::eINSTANCE.or_Right,ERROR_Expression_type_error);			
+				error("Type Error: expected "+t1+" is "+t2,CarmaPackage::eINSTANCE.and_Right,ERROR_Expression_type_error);			
 			}
 		}
 		
@@ -637,7 +767,7 @@ class CARMAValidator extends AbstractCARMAValidator {
 		if ((e.left != null)&&(e.right != null)) {
 			var type1 = e.left.typeOf
 			var type2 = e.right.typeOf
-			if ((type1!=null)&&(type2!=null)&&(!type1.none)&&(!type1.error)&&(!type1.none)&&(!type2.error)&&(!type1.equals(type2))) {
+			if ((type1!=null)&&(type2!=null)&&(!type1.none)&&(!type1.error)&&(!type2.none)&&(!type2.error)&&(!type1.equals(type2))) {
 				error("Type Error: Expected "+type1+" is "+type2,CarmaPackage::eINSTANCE.equality_Right,ERROR_Expression_type_error);			
 			}
 		}
@@ -652,7 +782,7 @@ class CARMAValidator extends AbstractCARMAValidator {
 		if ((e.left != null)&&(e.right != null)) {
 			var type1 = e.left.typeOf
 			var type2 = e.right.typeOf
-			if ((type1!=null)&&(type2!=null)&&(!type1.none)&&(!type1.error)&&(!type1.none)&&(!type2.error)&&(!type1.equals(type2))) {
+			if ((type1!=null)&&(type2!=null)&&(!type1.none)&&(!type1.error)&&(!type2.none)&&(!type2.error)&&(!type1.equals(type2))) {
 				error("Type Error: Expected "+type1+" is "+type2,CarmaPackage::eINSTANCE.disEquality_Right,ERROR_Expression_type_error);			
 			}
 		}
@@ -779,12 +909,149 @@ class CARMAValidator extends AbstractCARMAValidator {
 		}
 	}
 	
+	
+	
 	@Check
 	def check_ERROR_Expression_type_error_Arithmetic_right( Addition e ) {
 		if (e.right != null) {
 			var type = e.left.typeOf
 			if ((type!=null)&&(!type.error)&&(!type.number)&&(!type.list)) {
 				error("Type Error: unexpected type "+type,CarmaPackage::eINSTANCE.addition_Left,ERROR_Expression_type_error);			
+			}
+		}
+	}
+	
+	@Check
+	def check_ERROR_Expression_type_error_compatible( Addition e ) {
+		if ((e.left !=null)&&(e.right != null)) {
+			var tleft = e.left.typeOf
+			var tright = e.right.typeOf
+			if (!tleft.error&&!tleft.none&&!tright.error&&!tright.none&&!tleft.isCompatibleWith(tright)) {
+				error("Type Error: both argument should have the same type! ("+tleft+","+tright+")",CarmaPackage::eINSTANCE.addition_Right,ERROR_Expression_type_error);			
+			}
+		}
+	}
+
+	@Check
+	def check_ERROR_Expression_type_error_compatible( Subtraction e ) {
+		if ((e.left !=null)&&(e.right != null)) {
+			var tleft = e.left.typeOf
+			var tright = e.right.typeOf
+			if (!tleft.error&&!tleft.none&&!tright.error&&!tright.none&&!tleft.isCompatibleWith(tright)) {
+				error("Type Error: both argument should have the same type! ("+tleft+","+tright+")",CarmaPackage::eINSTANCE.subtraction_Right,ERROR_Expression_type_error);			
+			}
+		}
+	}
+
+	@Check
+	def check_ERROR_Expression_type_error_compatible( PostFunction e ) {
+		if (e.arg !=null) {
+			var targ = e.arg.typeOf
+			if (!targ.error&&!targ.none&&!targ.isLocation) {
+				error("Type Error: a location expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.postFunction_Arg,ERROR_Expression_type_error);			
+			}
+		}
+	}
+
+	@Check
+	def check_ERROR_Expression_type_error_compatible( PreFunction e ) {
+		if (e.arg !=null) {
+			var targ = e.arg.typeOf
+			if (!targ.error&&!targ.none&&!targ.isLocation) {
+				error("Type Error: a location expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.postFunction_Arg,ERROR_Expression_type_error);			
+			}
+		}
+	}
+
+	@Check
+	def check_ERROR_Expression_type_error_compatible( PoSetExpression e ) {
+		if (e.source !=null) {
+			var targ = e.source.typeOf
+			if (!targ.error&&!targ.none&&!targ.isLocation) {
+				error("Type Error: a location expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.poSetExpression_Source,ERROR_Expression_type_error);			
+			}
+		}
+	}
+	
+	@Check
+	def check_ERROR_Expression_type_error_compatible( PreSetExpression e ) {
+		if (e.source !=null) {
+			var targ = e.source.typeOf
+			if (!targ.error&&!targ.none&&!targ.isLocation) {
+				error("Type Error: a location expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.preSetExpression_Source,ERROR_Expression_type_error);			
+			}
+		}
+	}
+
+	@Check
+	def check_ERROR_Expression_type_error_compatible( EdgeSourceExpression e ) {
+		if (e.source !=null) {
+			var targ = e.source.typeOf
+			if (!targ.error&&!targ.none&&!targ.isEdge) {
+				error("Type Error: an edge expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.poSetExpression_Source,ERROR_Expression_type_error);			
+			}
+		}
+	}
+	
+	@Check
+	def check_ERROR_Expression_type_error_compatible( EdgeTargetExpression e ) {
+		if (e.source !=null) {
+			var targ = e.source.typeOf
+			if (!targ.error&&!targ.none&&!targ.isEdge) {
+				error("Type Error: an edge expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.preSetExpression_Source,ERROR_Expression_type_error);			
+			}
+		}
+	}
+	@Check
+	def check_ERROR_Expression_type_error_compatible( InEdgesExpression e ) {
+		if (e.source !=null) {
+			var targ = e.source.typeOf
+			if (!targ.error&&!targ.none&&!targ.isLocation) {
+				error("Type Error: a location expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.inEdgesExpression_Source,ERROR_Expression_type_error);			
+			}
+		}
+		if (e.arg !=null) {
+			var targ = e.source.typeOf
+			if (!targ.error&&!targ.none&&!targ.isLocation) {
+				error("Type Error: a location expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.inEdgesExpression_Arg,ERROR_Expression_type_error);			
+			}
+		}
+	}
+	
+	@Check
+	def check_ERROR_Expression_type_error_compatible( OutEdgesExpression e ) {
+		if (e.source !=null) {
+			var targ = e.source.typeOf
+			if (!targ.error&&!targ.none&&!targ.isLocation) {
+				error("Type Error: a location expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.inEdgesExpression_Source,ERROR_Expression_type_error);			
+			}
+		}
+		if (e.arg !=null) {
+			var targ = e.source.typeOf
+			if (!targ.error&&!targ.none&&!targ.isLocation) {
+				error("Type Error: a location expression is expected while it is "+targ+"!",CarmaPackage::eINSTANCE.inEdgesExpression_Arg,ERROR_Expression_type_error);			
+			}
+		}
+	}	
+	
+	@Check
+	def check_ERROR_Expression_type_error_compatible( Division e ) {
+		if ((e.left !=null)&&(e.right != null)) {
+			var tleft = e.left.typeOf
+			var tright = e.right.typeOf
+			if (!tleft.error&&!tleft.none&&!tright.error&&!tright.none&&!tleft.isCompatibleWith(tright)) {
+				error("Type Error: both argument should have the same type! ("+tleft+","+tright+")",CarmaPackage::eINSTANCE.division_Right,ERROR_Expression_type_error);			
+			}
+		}
+	}
+	
+	@Check
+	def check_ERROR_Expression_type_error_compatible( Multiplication e ) {
+		if ((e.left !=null)&&(e.right != null)) {
+			var tleft = e.left.typeOf
+			var tright = e.right.typeOf
+			if (!tleft.error&&!tleft.none&&!tright.error&&!tright.none&&!tleft.isCompatibleWith(tright)) {
+				error("Type Error: both argument should have the same type! ("+tleft+","+tright+")",CarmaPackage::eINSTANCE.multiplication_Right,ERROR_Expression_type_error);			
 			}
 		}
 	}
@@ -798,6 +1065,10 @@ class CARMAValidator extends AbstractCARMAValidator {
 			}
 		}
 	}
+
+	
+	
+	
 	
 	@Check
 	def check_ERROR_Expression_type_error_Arithmetic_right( Subtraction e ) {
@@ -848,8 +1119,7 @@ class CARMAValidator extends AbstractCARMAValidator {
 			}
 		}
 	}
-
-
+	
 	@Check
 	def check_ERROR_Expression_type_error_Arithmetic_left( Modulo e ) {
 		if (e.left != null) {
@@ -1015,7 +1285,7 @@ class CARMAValidator extends AbstractCARMAValidator {
 		if ((f.field != null)&&(f.value != null)) {
 			var tf = f.field.fieldType.toCarmaType
 			var tv = f.value.typeOf
-			if (!tf.equals(tv)) {
+			if ((tv != null) && !tf.equals(tv)) {
 				error("Type Error: Expected "+tf+" is "+tv,CarmaPackage::eINSTANCE.fieldAssignment_Value,ERROR_FieldAssignment_type_error);
 			}		
 		}
@@ -1039,8 +1309,8 @@ class CARMAValidator extends AbstractCARMAValidator {
 	@Check
 	def check_ERROR_VariableAssignment_type_error( VariableDeclarationCommand f ) {
 		var tf = f.variable.type.toCarmaType
-		var tv = f.value.typeOf
-		if (!tf.equals(tv)) {
+		var tv = f.value?.typeOf
+		if ((tv != null) && !tf.equals(tv)) {
 			error("Type Error: Expected "+tf+" is "+tv,CarmaPackage::eINSTANCE.variableDeclarationCommand_Value,ERROR_VariableDeclarationCommand_type_error);
 		}
 	}
@@ -1236,6 +1506,28 @@ class CARMAValidator extends AbstractCARMAValidator {
 			]
 		}
 	}
+	
+	public static val ERROR_NodeFor_Type = "ERROR_NodeFor_Type";
+	
+	@Check
+	def check_ERROR_NodeFor_Type( NodeForEach e ) {
+		val eType = e.iteration.value.typeOf
+		if ((eType != null) && !eType.list && !eType.set) {
+			error("The values over which to loop must be a list or set!",
+				CarmaPackage::eINSTANCE.nodeForEach_Iteration,ERROR_NodeFor_Type)
+		}
+	}
+	
+	public static val ERROR_ConnectionFor_Type = "ERROR_ConnectionFor_Type";
+	
+	@Check
+	def check_ERROR_ConnectionFor_Type( ConnectionForEach e ) {
+		val eType = e.iteration.value.typeOf
+		if ((eType != null) && (!eType.list) && (!eType.set)) {
+			error("The values over which to loop must be a list or set!",
+				CarmaPackage::eINSTANCE.connectionForEach_Iteration,ERROR_ConnectionFor_Type)
+		}
+	}
 
 	@Check
 	def check_ERROR_Location_Parameters_Type( LocationExpression e ) {
@@ -1323,8 +1615,8 @@ class CARMAValidator extends AbstractCARMAValidator {
 	def check_ERROR_Filter_Type_Arg2( SelectFunction s ) {
 		if (s.arg2 != null) {
 			var eType = s.arg2.typeOf
-			if ((!eType.integer)&&(!eType.real)) {
-				error("Type Error: Expected "+CarmaType::INTEGER_TYPE+" or "+CarmaType::REAL_TYPE+" is "+eType,CarmaPackage::eINSTANCE.lambdaContext_Arg2,ERROR_Expression_type_error);
+			if (!eType.real) {
+				error("Type Error: Expected "+CarmaType::REAL_TYPE+" is "+eType,CarmaPackage::eINSTANCE.lambdaContext_Arg2,ERROR_Expression_type_error);
 			}
 		}	
 	}
@@ -1347,6 +1639,26 @@ class CARMAValidator extends AbstractCARMAValidator {
 				error("Type Error: Expected "+CarmaType::INTEGER_TYPE+" or "+CarmaType::REAL_TYPE+" is "+eType,CarmaPackage::eINSTANCE.normalSampling_Sd,ERROR_Expression_type_error);
 			}
 		}	
+	}
+	
+	@Check
+	def check_ERROR_WeightedChoice( WeightedChoice wc ) {
+		if (wc.values != null && wc.weights != null) {
+			val notRealWeight = wc.weights.findFirst[!it.typeOf?.real]
+			if (notRealWeight != null) {
+				error("Type Error: All weights must be real-valued, not " + notRealWeight.typeOf,
+					CarmaPackage::eINSTANCE.weightedChoice_Weights,ERROR_Expression_type_error);
+			}
+//			if (wc.weights.exists[!it.typeOf.real]) {
+//				error("Type Error: All weights must be real-valued",
+//					CarmaPackage::eINSTANCE.weightedChoice_Weights,ERROR_Expression_type_error);
+//			}
+			val returnTypes = wc.values.map[it.typeOf]
+			if (returnTypes.exists[it != returnTypes.get(0)]) {
+				error("Type Error: All options must have the same type",
+					CarmaPackage::eINSTANCE.weightedChoice_Values,ERROR_Expression_type_error);
+			}
+		}
 	}
 	
 	public static final String ERROR_Bad_use_of_now = "ERROR_Bad_use_of_now";

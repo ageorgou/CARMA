@@ -60,6 +60,7 @@ public class CARMACommandLine {
 	static boolean replicationsSet = false;
 	static int nReplications;
 	private static long timeElapsed = 0; // time in nanoseconds
+	private static double executionTime; // time in milliseconds, only counting simulations
 	
 	private static enum Mode {Simulation, Multivesta, Help, Summary, None};
 	
@@ -456,6 +457,7 @@ public class CARMACommandLine {
 			}
 			long stopTime = System.nanoTime();
 			timeElapsed  = stopTime - startTime;
+			executionTime = sim.getExecutionTime();
 			report(String.format("Time elapsed: %s for %d replications",
 					formatTime(timeElapsed),sim.getReplications()));
 			// ...and save output
@@ -494,8 +496,7 @@ public class CARMACommandLine {
 		//calls = subtasks.stream().map(t -> makeCallable(t))
 		//		.collect(Collectors.toList());
 		// or simply:
-		List<? extends Callable<Object>> calls = new ArrayList<Callable<Object>>();
-		calls = subtasks;
+		List<? extends Callable<Object>> calls = subtasks;
 		try {
 			executor.invokeAll(calls);
 		}
@@ -540,8 +541,14 @@ public class CARMACommandLine {
 		
 		// and create the final summary simulation
 		CommandLineSimulation finalSim = sim.copy();
-		//TODO change starting, total and average time in constructor of outcome?
-		SimulationOutcome outcome = new SimulationOutcome("",0,0,allResults);
+		// use the average execution time across all batches for the summary
+		double time = 0;
+		for (CommandLineSimulation task : subtasks) {
+			time += task.getExecutionTime();
+		}
+		time /= subtasks.size();
+		SimulationOutcome outcome = new SimulationOutcome("", time, 
+				time / sim.getReplications(), allResults);
 		List<SimulationOutcome> finalResult = new ArrayList<SimulationOutcome>(1);
 		finalResult.add(outcome);
 		finalSim.setResults(finalResult);
@@ -614,6 +621,18 @@ public class CARMACommandLine {
 			System.err.println("Could not create file: " + timeFile + ".");
 		}
 		
+		// Same for execution time (simulations only):
+		timeFile = outputBase.resolve("simulationTimeInSeconds");
+		if (Files.exists(timeFile)) {
+			warn("will overwrite file " + timeFile + ".");
+		}
+		try (PrintStream out = new PrintStream(timeFile.toFile())) {
+			double time_s = executionTime / 1e3;
+			out.print(String.format("%.5f",time_s));
+		} catch (FileNotFoundException e) {
+			System.err.println("Could not create file: " + timeFile + ".");
+		}
+
 		// Copy original model:
 		Path originalPath = Paths.get(sim.getModelLocation());
 		Path copyPath = outputBase.resolve(originalPath.getFileName());
@@ -658,28 +677,62 @@ public class CARMACommandLine {
 		// Make gnuplot script:
 		Path plotFile = outputBase.resolve("plot.gp");
 		try (PrintStream out = new PrintStream(plotFile.toFile())) {
-			out.println("set datafile separator \";\"");
-			out.println("set yrange [0:*]");
-			//out.println("set offset graph 0.01,0.01,0,0");
-			out.println("#You can control the position of the legend with the following line:");
-			out.println("#set key outside right center");
 			out.println("set title \"Measures for " + sim.getName() + "\"");
-			out.println("#To save a png figure of the plot, uncomment the next two lines:");
+			out.println("set xlabel \"Time\"");
+			out.println("set datafile separator \";\"");
+			out.println();
+			out.println("# To change the bounds of the yaxis, edit the following line:");
+			out.println("set yrange [0:*]");
+			out.println("# To change the bounds of the xaxis, uncomment and edit the following line:");
+			out.println("#set xrange [0:*]");
+			out.println();
+			
+			//out.println("set offset graph 0.01,0.01,0,0");
+			out.println("# You can control the position of the legend with the following line:");
+			out.println("#set key outside right center");
+			out.println();
+			
+			out.println("# To save a png figure of the plot, uncomment the next two lines:");
 			out.println("#set terminal png");
 			out.println(String.format("#set output \"%s_plot.png\"",sim.getName()));
+			out.println("# Or for PostScript output, uncomment the next two lines instead:");
+			out.println("#set terminal postscript color");
+			out.println(String.format("#set output \"%s_plot.ps\"",sim.getName()));
+			out.println();
+
+			out.println("# To change the font size on the axes, uncomment and edit the following line:");
+			out.println("#set size 0.5,0.5");
+			out.println();
+			
 			List<String> measureList = sim.getMeasures().stream()
 					.map(t -> sim.getCarmaModel().getMeasure(t.getMeasureName(),t.getParameters())
 							.getName()).collect(Collectors.toList());
-			out.println("measures = \"" + String.join(" ", measureList) + "\"");
-			out.println("#The below line will print the mean value of each measure in the experiment.");
-			out.println("#The confidence intervals at each point will be shown as error bars.");
-			out.println("plot for [measure in measures] measure.\".csv\" using 1:2:4"
+			out.println("# The below lines will print the mean value of each measure in the experiment.");
+			out.println("# The confidence intervals at each point will be shown as error bars.");
+			out.println("# If you want to show standard deviations as error bars instead,");
+			out.println("# change \"using 1:2:4\" to \"using 1:2:3\"");
+			for (int i = 0; i < measureList.size(); i++) {
+				//output will have the form:
+				//plot "measure1.csv" using 1:2:4 title "measure1" with yerrorlines lw 4, \
+				//	"measure2.csv" using 1:2:4 title "measure2" with yerrorlines lw 4
+				//etc. The ?: switching just ensures the right elements are printed at the right places
+				out.print((i == 0) ? "plot " : "\t");
+				out.print(String.format("\"%1$s.csv\" using 1:2:4 title \"%1$s\" with yerrorlines lw 4",
+						measureList.get(i)));
+				out.println((i < measureList.size() - 1) ? ", \\" : "");
+			}
+			out.println();
+			
+			out.println("# For faster modification, the equivalent lines below may be useful:");
+			out.println("#measures = \"" + String.join(" ", measureList) + "\"");
+			out.println("#plot for [measure in measures] measure.\".csv\" using 1:2:4 lw 4"
 					+ " title measure with yerrorlines");
-			out.println("#If you want to show standard deviations as error bars, instead use:");
-			out.println("#plot for [measure in measures] measure.\".csv\" using 1:2:3"
-					+ " title measure with yerrorlines");
-			out.println("#[Optional: Comment out the next line if saving to a file]");
-			out.println("pause -1");
+			out.println();
+			
+			out.println("# To only print mean values without error bars, "
+					+ "change \"1:2:4\" to \"1:2\" and \"yerrorlines\" to \"lines\".");
+
+			
 		} catch (FileNotFoundException e) {
 			System.err.println("Could not create file: " + plotFile + ".");
 		}
@@ -782,8 +835,6 @@ public class CARMACommandLine {
 				System.out.println("Could not run MultiVeStA experiment.\nError:");
 				e.printStackTrace();
 			}
-			
-			//System.out.println("MultiVeStA integration coming soon.");
 			break;
 		case Summary:
 			printSummary(args);
@@ -883,6 +934,7 @@ public class CARMACommandLine {
 		multithreaded = false;
 		nThreads = 1;
 		timeElapsed = 0;
+		executionTime = 0;
 		seedSet = false;
 		deadlineSet = false;
 		replicationsSet = false;

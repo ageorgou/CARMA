@@ -132,6 +132,16 @@ import eu.quanticol.carma.core.carma.SelectFunction
 import eu.quanticol.carma.core.carma.LambdaParameter
 import eu.quanticol.carma.core.carma.LambdaContext
 import eu.quanticol.carma.core.carma.NormalSampling
+import eu.quanticol.carma.core.carma.TargetAssignmentList
+import eu.quanticol.carma.core.carma.MinInt
+import eu.quanticol.carma.core.carma.MaxInt
+import eu.quanticol.carma.core.carma.MaxReal
+import eu.quanticol.carma.core.carma.MinReal
+import eu.quanticol.carma.core.carma.InEdgesExpression
+import eu.quanticol.carma.core.carma.OutEdgesExpression
+import eu.quanticol.carma.core.carma.EdgeSourceExpression
+import eu.quanticol.carma.core.carma.EdgeTargetExpression
+import eu.quanticol.carma.core.carma.WeightedChoice
 
 class TypeSystem {
 
@@ -340,6 +350,19 @@ class TypeSystem {
 		}
 	}
 	
+	def dispatch CarmaType typeOf( TargetAssignmentList f ) {
+		if (f.target == null) {
+			CarmaType::NONE_TYPE		
+		} else {
+			var t = f.target.typeOf
+			if (t.isList) {
+				t.asList.elementsType
+			} else {
+				CarmaType::ERROR_TYPE
+			}
+		}
+	}
+	
 	def dispatch CarmaType typeOf( SetExpression e ) {
 		if (e.values.isEmpty) {
 			CarmaType::createSetType(null)
@@ -542,6 +565,22 @@ class TypeSystem {
 		CarmaType::BOOLEAN_TYPE
 	}
 
+	def  dispatch CarmaType typeOf( MinInt e ) {
+		CarmaType::INTEGER_TYPE
+	}
+
+	def  dispatch CarmaType typeOf( MaxInt e ) {
+		CarmaType::INTEGER_TYPE
+	}
+
+	def  dispatch CarmaType typeOf( MaxReal e ) {
+		CarmaType::REAL_TYPE
+	}
+
+	def  dispatch CarmaType typeOf( MinReal e ) {
+		CarmaType::REAL_TYPE
+	}
+
 	def  dispatch CarmaType typeOf( AtomicFalse e ) {
 		CarmaType::BOOLEAN_TYPE
 	}
@@ -572,6 +611,10 @@ class TypeSystem {
 	
 	def  dispatch CarmaType typeOf( NormalSampling e ) {
 		CarmaType::REAL_TYPE
+	}
+	
+	def dispatch CarmaType typeOf( WeightedChoice e) {
+		e.values.get(0).typeOf
 	}
 	
 	def  dispatch CarmaType typeOf( AtomicPi e ) {
@@ -749,6 +792,22 @@ class TypeSystem {
 
 	def dispatch CarmaType typeOf( PreSetExpression e ) {
 		CarmaType::createSetType( CarmaType::LOCATION_TYPE )
+	}
+
+	def dispatch CarmaType typeOf( InEdgesExpression e ) {
+		CarmaType::createSetType( CarmaType::EDGE_TYPE )
+	}
+
+	def dispatch CarmaType typeOf( OutEdgesExpression e ) {
+		CarmaType::createSetType( CarmaType::EDGE_TYPE )
+	}
+
+	def dispatch CarmaType typeOf( EdgeSourceExpression e ) {
+		CarmaType::LOCATION_TYPE
+	}
+
+	def dispatch CarmaType typeOf( EdgeTargetExpression e ) {
+		CarmaType::LOCATION_TYPE
 	}
 
 
@@ -975,6 +1034,8 @@ class TypeSystem {
 	}
 	
 	def areEqual( UniverseElement e1 , UniverseElement e2 ) {
-		(e1.name==e2.name)&&(e1.type==e2.type)
+		var v = (e1.name==e2.name)
+		v = v &&(e1.type.toCarmaType==e2.type.toCarmaType)
+		v
 	}	
 }

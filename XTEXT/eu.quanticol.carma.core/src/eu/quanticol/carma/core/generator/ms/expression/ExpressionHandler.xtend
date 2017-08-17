@@ -108,6 +108,19 @@ import eu.quanticol.carma.core.carma.ExistsFunction
 import eu.quanticol.carma.core.carma.ForAllFunction
 import eu.quanticol.carma.core.carma.SelectFunction
 import eu.quanticol.carma.core.carma.LambdaParameter
+import eu.quanticol.carma.core.carma.HeadFunction
+import eu.quanticol.carma.core.carma.TailFunction
+import eu.quanticol.carma.core.carma.MinInt
+import eu.quanticol.carma.core.carma.MaxInt
+import eu.quanticol.carma.core.carma.MinReal
+import eu.quanticol.carma.core.carma.MaxReal
+import eu.quanticol.carma.core.carma.InEdgesExpression
+import eu.quanticol.carma.core.carma.OutEdgesExpression
+import eu.quanticol.carma.core.carma.EdgeSourceExpression
+import eu.quanticol.carma.core.carma.EdgeTargetExpression
+import eu.quanticol.carma.core.carma.EdgeProperty
+import eu.quanticol.carma.core.carma.NormalSampling
+import eu.quanticol.carma.core.carma.WeightedChoice
 
 class ExpressionHandler {
 	
@@ -215,7 +228,7 @@ class ExpressionHandler {
 	}
 	
 	def dispatch CharSequence expressionToJava( MyLocation l ) {
-		"loc".attributeName(ReferenceContext::MY)
+		"loc".attributeName(ReferenceContext::NONE)
 	}
 	
 	
@@ -268,6 +281,7 @@ class ExpressionHandler {
 		switch (field) {
 			FieldDefinition: '''«source.expressionToJava»«field.expressionToJava»'''		
 			LabelDefinition: '''«source.expressionToJava»«field.expressionToJava»'''
+			EdgeProperty: '''«source.expressionToJava»«field.expressionToJava»'''
 			UniverseElement: {
 				'''«source.expressionToJava».get( «field.indexOf» , «field.type.toJavaType».class )'''
 			}
@@ -280,6 +294,10 @@ class ExpressionHandler {
 	
 	def dispatch CharSequence expressionToJava( LabelDefinition e ) {
 		'''.isInArea( "«e.name»" )'''
+	}
+	
+	def dispatch CharSequence expressionToJava( EdgeProperty e ) {
+		'''.getValue( "«e.name»" , «e.value.typeOf.toJavaType(false)».class )'''
 	}
 	
 	def dispatch CharSequence expressionToJava( NodeExpressionOrArrayAccess e ) {
@@ -311,6 +329,22 @@ class ExpressionHandler {
 	
 	def dispatch CharSequence expressionToJava( AtomicTrue e ) {
 		'''true'''		
+	}
+	
+	def dispatch CharSequence expressionToJava( MinInt e ) {
+		'''Integer.MIN_VALUE'''		
+	}
+	
+	def dispatch CharSequence expressionToJava( MaxInt e ) {
+		'''Integer.MAX_VALUE'''		
+	}
+	
+	def dispatch CharSequence expressionToJava( MinReal e ) {
+		'''Double.MIN_VALUE'''		
+	}
+	
+	def dispatch CharSequence expressionToJava( MaxReal e ) {
+		'''Double.MAX_VALUE'''		
 	}
 	
 	def dispatch CharSequence expressionToJava( AtomicFalse e ) {
@@ -362,31 +396,46 @@ class ExpressionHandler {
 	
 	def dispatch CharSequence expressionToJava( MapFunction e ) {
 		'''
-		map( «e.arg1.expressionToJava» , __LAMBDA__var -> «e.arg2.expressionToJava»)
+		map( 
+			«e.arg1.expressionToJava» , 
+			__LAMBDA__var -> «e.arg2.expressionToJava»
+		)
 		'''
 	}
 
 	def dispatch CharSequence expressionToJava( FilterFunction e ) {
 		'''
-		filter( «e.arg1.expressionToJava» , __LAMBDA__var -> «e.arg2.expressionToJava»)
+		filter( 
+			«e.arg1.expressionToJava» , 
+			__LAMBDA__var -> «e.arg2.expressionToJava»
+		)
 		'''
 	}
 
 	def dispatch CharSequence expressionToJava( ExistsFunction e ) {
 		'''
-		exists( «e.arg1.expressionToJava» , __LAMBDA__var -> «e.arg2.expressionToJava»)
+		exist( 
+			«e.arg1.expressionToJava» , 
+			__LAMBDA__var -> «e.arg2.expressionToJava»
+		)
 		'''
 	}
 
 	def dispatch CharSequence expressionToJava( ForAllFunction e ) {
 		'''
-		forall( «e.arg1.expressionToJava» , __LAMBDA__var -> «e.arg2.expressionToJava»)
+		forall( 
+			«e.arg1.expressionToJava» , 
+			__LAMBDA__var -> «e.arg2.expressionToJava»
+		)
 		'''
 	}
 
 	def dispatch CharSequence expressionToJava( SelectFunction e ) {
 		'''
-		select( «e.arg1.expressionToJava» , __LAMBDA__var -> «e.arg2.expressionToJava»)
+		RandomGeneratorRegistry.select( 
+			«e.arg1.expressionToJava» , 
+			__LAMBDA__var -> «e.arg2.expressionToJava»
+		)
 		'''
 	}
 
@@ -399,13 +448,13 @@ class ExpressionHandler {
 	
 	def dispatch CharSequence expressionToJava( NewListFunction e ) {
 		'''
-		new LinkedList<«e.arg1.toJavaType»>();
+		new LinkedList<«e.arg1.toJavaType»>()
 		'''		
 	}
 
 	def dispatch CharSequence expressionToJava( NewSetFunction e ) {
 		'''
-		new HashSet<«e.arg2.toJavaType»>();
+		new HashSet<«e.arg2.toJavaType»>()
 		'''		
 	}
 	
@@ -717,6 +766,29 @@ class ExpressionHandler {
 		'''
 	}
 	
+	def dispatch CharSequence expressionToJava( InEdgesExpression e ) {
+		'''
+		«e.source.expressionToJava».getInEdges(«IF e.arg != null» «e.arg.expressionToJava» «ENDIF»)
+		'''
+	}
+
+	def dispatch CharSequence expressionToJava( OutEdgesExpression  e ) {
+		'''
+		«e.source.expressionToJava».getOutEdges( «IF e.arg != null» «e.arg.expressionToJava» «ENDIF» )
+		'''
+	}
+
+	def dispatch CharSequence expressionToJava( EdgeSourceExpression e ) {
+		'''
+		«e.source.expressionToJava».getSource()
+		'''
+	}
+
+	def dispatch CharSequence expressionToJava( EdgeTargetExpression  e ) {
+		'''
+		«e.source.expressionToJava».getTarget()
+		'''
+	}
 	
 	def dispatch CharSequence expressionToJava( PostFunction e ) {
 		'''
@@ -810,9 +882,28 @@ class ExpressionHandler {
 		}
 	}
 	
+	def dispatch CharSequence expressionToJava( NormalSampling e ) {
+		'''RandomGeneratorRegistry.normal( «e.mean.expressionToJava», «e.sd.expressionToJava» )'''
+	}
+	
+	def dispatch CharSequence expressionToJava( WeightedChoice e ) {
+		'''RandomGeneratorRegistry.weightedSelect(
+			new «e.typeOf.toJavaType(false)»[] { «FOR v : e.values SEPARATOR ", "»«v.expressionToJava»«ENDFOR» },
+			new double[] { «FOR w : e.weights SEPARATOR ", "»«w.expressionToJava»«ENDFOR» })'''
+	}
+	
 	def dispatch CharSequence expressionToJava( SizeFunction e ) {
 		'''computeSize( «e.arg1.expressionToJava» )'''
 	}
+	
+	def dispatch CharSequence expressionToJava( HeadFunction e ) {
+		'''head( «e.arg1.expressionToJava» )'''
+	}
+	
+	def dispatch CharSequence expressionToJava( TailFunction e ) {
+		'''tail( «e.arg1.expressionToJava» )'''
+	}
+	
 	
 	def invocationParameters( List<CharSequence> args , List<ValueType> parms ) {
 		var indexedArgs = args.indexed

@@ -60,6 +60,7 @@ class ModelHandler {
 		import eu.quanticol.carma.simulator.space.Node;
 		import eu.quanticol.carma.simulator.space.SpaceModel;
 		import eu.quanticol.carma.simulator.space.Tuple;
+		import eu.quanticol.carma.simulator.space.Edge;
 		import java.util.LinkedList;
 		import java.util.HashSet;
 		import java.util.HashMap;
@@ -247,14 +248,14 @@ class ModelHandler {
 	}
 	
 	def dispatch CharSequence vertexInstantiation( NodeForEach f ) {
-		var eType = f.iteration.typeOf
+		var eType = f.iteration.value.typeOf
 		if ((!eType.isList)&&(!eType.isSet)) {
 			'''
 			//ERROR!!!
 			'''
 		} else {
 			'''
-			for( «eType.toJavaType(false)» «f.iteration.name.variableName»:  «f.iteration.value.expressionToJava» ) 
+			for( «f.iteration.typeOf.toJavaType(false)» «f.iteration.name.variableName» : «f.iteration.value.expressionToJava» ) 
 				«f.body.vertexInstantiation»
 			'''
 		}
@@ -294,14 +295,14 @@ class ModelHandler {
 	}
 
 	def dispatch CharSequence generateEdgeCode( ConnectionForEach e ) {
-		var eType = e.iteration.typeOf
+		var eType = e.iteration.value.typeOf
 		if ((!eType.isList)&&(!eType.isSet)) {
 			'''
 			//ERROR!!!
 			'''
 		} else {
 			'''
-			for( «eType.toJavaType(false)» «e.iteration.name.variableName»:  «e.iteration.value.expressionToJava» ) 
+			for( «e.iteration.typeOf.toJavaType(false)» «e.iteration.name.variableName»:  «e.iteration.value.expressionToJava» ) 
 				«e.body.generateEdgeCode»
 			'''
 		}

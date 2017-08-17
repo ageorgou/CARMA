@@ -302,7 +302,8 @@ ReferenceableElement:
 	FieldDefinition|
 	LabelDefinition|	
 	UniverseElement|
-	MeasureDefinition
+	MeasureDefinition|
+	EdgeProperty
 ;
 
 ////////////////////////////////////////////////////FUNCTIONS
@@ -327,7 +328,8 @@ AssignmentCommand:
 ;
 
 AssignmentTarget:
-	TargetAssignmentVariable ({TargetAssignmentField.target=current} '.' field = [FieldDefinition])*
+	TargetAssignmentVariable ({TargetAssignmentField.target=current} '.' field = [FieldDefinition]
+		| {TargetAssignmentList.target=current} '[' index=Expression ']' )*
 ;
 
 TargetAssignmentVariable returns AssignmentTarget: {TargetAssignmentVariable}
@@ -379,6 +381,7 @@ UpdateCommand hidden(ML_COMMENT,SL_COMMENT,WS):
 		{UpdateAssignment.target=current} (":="|"="|'<-') expression=Expression ";" 
 		| {UpdateCollectionAdd.target=current} "." "add" "(" expression=Expression ")" ";"
 		| {UpdateCollectionRemove.target=current} "." "remove" "(" expression=Expression ")" ";"
+		| {UpdateArrayElement.target=current} ('[' indexes+=Expression ']')+ (":="|"="|'<-') expression=Expression ";"
 	)
 ;
 
@@ -725,13 +728,35 @@ Primary returns Expression hidden(ML_COMMENT,SL_COMMENT,WS):
 		{PreSetExpression.source=current} "." "pre"
 		| 
 		{PoSetExpression.source=current} "." "post"
+		| 
+		{InEdgesExpression.source=current} "." "incoming" "(" (arg = Expression)? ")"
+		| 
+		{OutEdgesExpression.source=current} "." "outgoing" "(" (arg = Expression)? ")"
+		| 
+		{EdgeSourceExpression.source=current} "." "source"
+		| 
+		{EdgeTargetExpression.source=current} "." "target"
+		|
+		{MapFunction.arg1=current} "." "map" "(" arg2 = Expression ")"
+		|
+		{FilterFunction.arg1=current} "." "filter" "(" arg2 = Expression ")"
+		|
+		{ExistsFunction.arg1=current} "." "exist" "(" arg2 = Expression ")"
+		|
+		{ForAllFunction.arg1=current} "." "forall" "(" arg2 = Expression ")"
+		|
+		{SelectFunction.arg1=current} "." "select" "(" arg2 = Expression ")"
 	)*
 ;
 
 Atomic returns Expression hidden(ML_COMMENT,SL_COMMENT,WS):
 	Reference 
 	| CollectionAtomicExpression
-	| {LambdaParameter} "*"
+	| {MaxInt} "MAXINT"
+	| {MinInt} "MININT"
+	| {MaxReal} "MAXREAL"
+	| {MinReal} "MINREAL"
+	| {LambdaParameter} "@"
 	| {Locations} "locations"
 	| {MyLocation} "loc"
 	| {AtomicTrue} "true"
@@ -746,6 +771,7 @@ Atomic returns Expression hidden(ML_COMMENT,SL_COMMENT,WS):
 	| {AtomicPi} "PI"
 	| {AtomicExp} "E"
 	| NormalSampling
+	| WeightedChoice
 	| BuiltInFunctions
 	| MyContext
 	| {ReceiverContext} "receiver" "." attribute=AttributeReference
@@ -824,11 +850,13 @@ BuiltInFunctions returns Expression :
 	| {NewListFunction} "newList" "(" arg1=BasicType ")"
 	| {NewSetFunction} "newSet" "(" arg2=BasicType ")"
 	| {SizeFunction} "size" "(" arg1 = Expression ")"
+	| {HeadFunction} "head" "(" arg1 = Expression ")"
+	| {TailFunction} "tail" "(" arg1 = Expression ")"
 	| LambdaContext
 ;
 
 RandomExpression:
-	UniformFunction|NormalSampling|SelectFunction|AtomicRnd
+	UniformFunction|NormalSampling|SelectFunction|AtomicRnd|WeightedChoice
 ;
 
 LambdaContext:
@@ -838,6 +866,10 @@ LambdaContext:
 	| {ForAllFunction} "forall" "(" arg1=Expression "," arg2=Expression ")"
 	| SelectFunction
 //	| {ReduceFunction} "reduce" "(" arg1 = Expression "," arg2=Expression "," arg3=Expression ")"
+;
+
+WeightedChoice:
+	"selectFrom" "(" values+=Expression ":" weights+=Expression (',' values+=Expression ":" weights+=Expression)* ")"
 ;
 
 SelectFunction:
@@ -957,5 +989,4 @@ ActionStub hidden(ML_COMMENT,SL_COMMENT,WS):
 	{ActionStub} activity=[Activity] (isBroadcast?='*')?
 ;
 
-
-terminal REAL returns ecore::EDouble: (('0'..'9')+ '.' ('0' .. '9')+)|('.'('0' .. '9')*);
+terminal REAL returns ecore::EDouble:	('0'..'9')+ '.' ('0' .. '9')+ ('e' ('+'|'-')? ('0'..'9')+)?;
