@@ -20,6 +20,7 @@ public class MultivestaExperiment {
 	
 	private String modelFile;
 	private String queryFile;
+	private String system;
 	private String output;
 	private Map<String,String> config;
 
@@ -35,13 +36,24 @@ public class MultivestaExperiment {
 		this.config = defaultConfiguration();
 	}
 	
+	public MultivestaExperiment(String modelFile, String queryFile, String system, String output) {
+		this.modelFile = modelFile;
+		this.queryFile = queryFile;
+		this.system = system;
+		this.output = output;
+		this.config = defaultConfiguration();
+	}
+	
 	public void run() throws IOException {
 		config.put("-m", getModelName());
 		config.put("-f", queryFile);
 		if (output != null) {
 			config.put("-op", output);
 		}
-		//config.put("-jn", getMultivestaJarLocation());
+		if (system != null) {
+			config.put("-o", "-system " + system);
+		}
+		config.put("-jn", getMultivestaJarLocation());
 		config.put("-sd","eu.quanticol.carma.multivesta.CARMASimulatorState");
 		EntryPointMultiVestaCARMA.main(paramSequence(config,true));
 		//vesta.NewVesta.invokeClient(paramSequence(config,false));
@@ -131,7 +143,7 @@ public class MultivestaExperiment {
 			for (String s : paramSequence(defaultConfiguration(),true)) {
 				System.out.println(s);
 			}
-			run();
+			//run();
 		}
 		catch (IOException e) {
 			e.printStackTrace();

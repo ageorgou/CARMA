@@ -70,6 +70,7 @@ public class CARMACommandLine {
 		}
 		switch(args[0]) {
 		case "multivesta":
+		case "mv":
 			return Mode.Multivesta;
 		case "simulate":
 		case "sim":
@@ -197,6 +198,7 @@ public class CARMACommandLine {
 		boolean unrecognised = false;
 		String modelFile = args[1];
 		String queryFile = args[2];
+		String systemName = null;
 		double a = 0;
 		boolean aSet = false;
 		for (int i = 3; i < args.length; i++) {
@@ -218,10 +220,19 @@ public class CARMACommandLine {
 						System.out.println("Could not understand confidence level (" + args[i] +
 								"). Ignoring.");
 					}
-				} else
+				} else {
 					System.out.println("Confidence flag was used but no confidence level given.");
+				}
 				break;
-
+			case "-s":
+			case "-scenario":
+			case "-system":
+				if (i+1 <= args.length) {
+					systemName = args[++i];
+				} else {
+					System.out.println("No system name given.");
+				}
+				break;
 			case "-quiet":
 			case "-q":
 				verbose = false;
@@ -234,7 +245,8 @@ public class CARMACommandLine {
 		}
 		if (unrecognised)
 			printHelp();
-		MultivestaExperiment exp = new MultivestaExperiment(modelFile,queryFile,outputFolder);
+		MultivestaExperiment exp = new MultivestaExperiment(modelFile,queryFile,
+				systemName,outputFolder);
 		if (aSet) {
 			exp.setConfidence(a);
 		}
