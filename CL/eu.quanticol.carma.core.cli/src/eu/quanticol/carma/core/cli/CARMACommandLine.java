@@ -279,14 +279,12 @@ public class CARMACommandLine {
 				}
 				break;
 			case "-visualizePlot":
+				// This will only enable visualisation if the argument passed is
+				// "true" or "True". Because of how Boolean.valueOf works, we
+				// cannot tell whether the argument is "false" or an invalid value.
 				if (i+1 <= args.length) {
-					try {
-						visualise = Boolean.valueOf(args[++i]);
-						visualiseSet = true;
-					} catch (NumberFormatException e) {
-						System.out.println("Could not understand whether to show plot (" +
-								args[i] + "). Ignoring.");
-					}
+					visualise = Boolean.valueOf(args[++i]);
+					visualiseSet = true;
 				} else {
 					System.out.println("Visualisation flag was used but no logic value given.");
 				}
