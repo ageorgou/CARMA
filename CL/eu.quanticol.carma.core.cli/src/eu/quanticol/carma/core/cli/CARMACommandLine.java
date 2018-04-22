@@ -773,7 +773,7 @@ public class CARMACommandLine {
 				out.println();
 			}
 		} catch (FileNotFoundException e) {
-			System.err.println("Could not create file: " + timeFile + ".");
+			System.err.println("Could not create file: " + experimentFile + ".");
 		}
 		
 		// Make gnuplot script:
