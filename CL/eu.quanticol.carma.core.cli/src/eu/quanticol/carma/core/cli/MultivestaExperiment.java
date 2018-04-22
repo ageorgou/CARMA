@@ -121,6 +121,30 @@ public class MultivestaExperiment {
 		config.put("-a", String.valueOf(a));
 	}
 	
+	public void setDelta(double d) {
+		config.put("-d1", String.valueOf(d));
+	}
+	
+	public void setDeltaList(String deltaList) {
+		config.put("-deltalist", deltaList);
+	}
+	
+	public void setIntermediate(int n) {
+		config.put("-intermediateResults", String.valueOf(n));
+	}
+	
+	public void setVisualisation(boolean visualise) {
+		config.put("-visualizePlot", String.valueOf(visualise));
+	}
+	
+	public void setGeneric(String arg) {
+		// To be used for other parameters not captured in the command line parsing.
+		// Note that these are not checked at all, and will simply be passed to the
+		// MultiVeStA parameters directly.
+		config.put(arg,  null);
+	}
+	
+	
 	private static String[] paramSequence(Map<String,String> config, boolean includeC) {
 		List<String> params = new ArrayList<String>();
 		if (includeC)

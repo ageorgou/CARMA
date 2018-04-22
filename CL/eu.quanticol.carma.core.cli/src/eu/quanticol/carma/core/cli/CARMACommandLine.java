@@ -201,6 +201,16 @@ public class CARMACommandLine {
 		String systemName = null;
 		double a = 0;
 		boolean aSet = false;
+		double d = 0;
+		boolean dSet = false;
+		String deltaList = "[]";
+		boolean deltaListSet = false;
+		int nIntermediate = 0;
+		boolean intermediateSet = false;
+		boolean visualise = false;
+		boolean visualiseSet = false;
+		List<String> otherArguments = new ArrayList<String>();
+		
 		for (int i = 3; i < args.length; i++) {
 			switch(args[i]) {
 			case "-o":
@@ -233,23 +243,99 @@ public class CARMACommandLine {
 					System.out.println("No system name given.");
 				}
 				break;
+			case "-d1":
+				if (i+1 <= args.length) {
+					try {
+						d = Double.valueOf(args[++i]);
+						dSet = true;
+					} catch (NumberFormatException e) {
+						System.out.println("Could not understand confidence level (" + args[i] +
+								"). Ignoring.");
+					}
+				} else {
+					System.out.println("Delta flag was used but no level given.");
+				}
+				break;
+			case "-deltalist":
+				if (i+1 <= args.length) { // not checking whether list is well-formed
+						deltaList = args[++i];
+						deltaListSet = true;
+				} else {
+					System.out.println("Delta-list flag was used but no levels given.");
+				}
+				break;
+			case "-intermediateResults":
+				if (i+1 <= args.length) {
+					try {
+						nIntermediate = Integer.valueOf(args[++i]);
+						intermediateSet = true;
+					} catch (NumberFormatException e) {
+						System.out.println("Could not understand how often to " +
+								"print results (" + args[i] +
+								"). Ignoring.");
+					}
+				} else {
+					System.out.println("Intermediate results flag was used but no number given.");
+				}
+				break;
+			case "-visualizePlot":
+				if (i+1 <= args.length) {
+					try {
+						visualise = Boolean.valueOf(args[++i]);
+						visualiseSet = true;
+					} catch (NumberFormatException e) {
+						System.out.println("Could not understand whether to show plot (" +
+								args[i] + "). Ignoring.");
+					}
+				} else {
+					System.out.println("Visualisation flag was used but no logic value given.");
+				}
+				break;
 			case "-quiet":
 			case "-q":
 				verbose = false;
 				break;
-			default: {
-				System.out.println("Unrecognised option: " + args[i] + " (ignoring).");
+			default:
+				// If the option is not recognised, we will just pass it along
+				// to MultiVeStA without any processing. This can lead to errors,
+				// but it allows the user full access to the MultiVeStA parameters
+				// which are otherwise not catered for here.
+				// Note that We treat each command line argument separately, whether
+				// it is an option or the previous option's argument, but this
+				// should not affect the end behaviour.
+				System.out.println("Unrecognised option: " + args[i]
+					 + " (passing directly to MultiVeStA).");
 				unrecognised = true;
-			}
+				otherArguments.add(args[i]);
 			}
 		}
-		if (unrecognised)
-			printHelp();
+		if (unrecognised) {
+			warn("Some of the parameters provided were not recognised, " + 
+					"and were passed to MultiVeStA without being checked.");
+		}
+		
+		// Create the experiment, customising it based on the given options:
 		MultivestaExperiment exp = new MultivestaExperiment(modelFile,queryFile,
 				systemName,outputFolder);
 		if (aSet) {
 			exp.setConfidence(a);
 		}
+		if (dSet) {
+			exp.setDelta(d);
+		}
+		if (deltaListSet) {
+			exp.setDeltaList(deltaList);
+		}
+		if (intermediateSet) {
+			exp.setIntermediate(nIntermediate);
+		}
+		if (visualiseSet) {
+			exp.setVisualisation(visualise);
+		}
+		for (String arg : otherArguments) {
+			exp.setGeneric(arg);
+		}
+
 		return exp; 
 	}
 
