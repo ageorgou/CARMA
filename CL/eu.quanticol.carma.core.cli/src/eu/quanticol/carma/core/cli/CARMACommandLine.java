@@ -61,6 +61,7 @@ public class CARMACommandLine {
 	static int nReplications;
 	private static long timeElapsed = 0; // time in nanoseconds
 	private static double executionTime; // time in milliseconds, only counting simulations
+	private static LocalDateTime experimentDateTime;
 	
 	private static enum Mode {Simulation, Multivesta, Help, Summary, None};
 	
@@ -673,13 +674,14 @@ public class CARMACommandLine {
 			return;
 		}
 		SimulationOutcome result = sim.getResult(0);
+		String fileSuffix = experimentDateTime.format(DateTimeFormatter.ofPattern("d_M_YY__kkmmss"));
 		Path outputBase;
 		if (outputFolder == null)
-			outputBase = Paths.get("results").resolve(sim.getName());
+			outputBase = Paths.get("results").resolve(sim.getName() + fileSuffix);
 		else
-			outputBase = Paths.get(outputFolder).resolve("results").resolve(sim.getName());
+			outputBase = Paths.get(outputFolder).resolve("results").resolve(sim.getName() + fileSuffix);
 		if (Files.exists(outputBase)) {
-			warn("folder for experiment " + sim.getName() + " already exists.");
+			warn("folder for experiment " + sim.getName() + fileSuffix + " already exists.");
 		}
 		try {
 			Files.createDirectories(outputBase);
@@ -694,7 +696,7 @@ public class CARMACommandLine {
 
 		// Write simulation results:
 		for (SimulationTimeSeries ts : result.getCollectedData()) {
-			Path measureFile = outputBase.resolve(ts.getName() + ".csv");
+			Path measureFile = outputBase.resolve(ts.getName() + fileSuffix + ".csv");
 			if (Files.exists(measureFile)) {
 				warn("will overwrite file " + measureFile + ".");
 			}
@@ -706,7 +708,7 @@ public class CARMACommandLine {
 		}
 		
 		// Write time taken:
-		Path timeFile = outputBase.resolve("timeInSeconds");
+		Path timeFile = outputBase.resolve("timeInSeconds" + fileSuffix);
 		if (Files.exists(timeFile)) {
 			warn("will overwrite file " + timeFile + ".");
 		}
@@ -731,7 +733,11 @@ public class CARMACommandLine {
 
 		// Copy original model:
 		Path originalPath = Paths.get(sim.getModelLocation());
-		Path copyPath = outputBase.resolve(originalPath.getFileName());
+		String originalFileName = originalPath.getFileName().toString();
+		int dotIndex = originalFileName.lastIndexOf(".");
+		String newFileName = originalFileName.substring(0, dotIndex)
+				+ fileSuffix + originalFileName.substring(dotIndex);
+		Path copyPath = outputBase.resolve(newFileName);
 		if (Files.exists(copyPath)) {
 			warn("will overwrite file " + copyPath + ".");
 		}
@@ -744,7 +750,7 @@ public class CARMACommandLine {
 		}
 		
 		// Write experiment segment:
-		Path experimentFile = outputBase.resolve("experimentFile");
+		Path experimentFile = outputBase.resolve("experimentFile" + fileSuffix);
 		if (Files.exists(experimentFile)) {
 			warn("will overwrite file " + experimentFile + ".");
 		}
@@ -771,7 +777,7 @@ public class CARMACommandLine {
 		}
 		
 		// Make gnuplot script:
-		Path plotFile = outputBase.resolve("plot.gp");
+		Path plotFile = outputBase.resolve("plot" + fileSuffix + ".gp");
 		try (PrintStream out = new PrintStream(plotFile.toFile())) {
 			out.println("set title \"Measures for " + sim.getName() + "\"");
 			out.println("set xlabel \"Time\"");
@@ -809,19 +815,19 @@ public class CARMACommandLine {
 			out.println("# change \"using 1:2:4\" to \"using 1:2:3\"");
 			for (int i = 0; i < measureList.size(); i++) {
 				//output will have the form:
-				//plot "measure1.csv" using 1:2:4 title "measure1" with yerrorlines lw 4, \
-				//	"measure2.csv" using 1:2:4 title "measure2" with yerrorlines lw 4
+				//plot "measure1<timestamp>.csv" using 1:2:4 title "measure1" with yerrorlines lw 4, \
+				//	"measure2<timestamp>.csv" using 1:2:4 title "measure2" with yerrorlines lw 4
 				//etc. The ?: switching just ensures the right elements are printed at the right places
 				out.print((i == 0) ? "plot " : "\t");
-				out.print(String.format("\"%1$s.csv\" using 1:2:4 title \"%1$s\" with yerrorlines lw 4",
-						measureList.get(i)));
+				out.print(String.format("\"%1$s%2$s.csv\" using 1:2:4 title \"%1$s\" with yerrorlines lw 4",
+						measureList.get(i), fileSuffix));
 				out.println((i < measureList.size() - 1) ? ", \\" : "");
 			}
 			out.println();
 			
 			out.println("# For faster modification, the equivalent lines below may be useful:");
 			out.println("#measures = \"" + String.join(" ", measureList) + "\"");
-			out.println("#plot for [measure in measures] measure.\".csv\" using 1:2:4 lw 4"
+			out.println("#plot for [measure in measures] measure.\"" + fileSuffix + ".csv\" using 1:2:4 lw 4"
 					+ " title measure with yerrorlines");
 			out.println();
 			
@@ -844,7 +850,8 @@ public class CARMACommandLine {
 			writer.println(new String(new char[firstLine.length()-1]).replace('\0', '-'));
 			writer.print("This experiment used the model " + sim.getModelLocation() + ".");
 			if (madeCopy) {
-					writer.println(" A copy has been saved in this directory.");
+					writer.println(" A copy has been saved in this directory as "
+							+ copyPath.getFileName() + ".");
 			} else {
 				// just in case, e.g. the original file is deleted during the simulation
 				writer.println("I failed to make a copy of the original model.");
@@ -911,6 +918,7 @@ public class CARMACommandLine {
 	}
 	
 	public static void main(String[] args) {
+		experimentDateTime = LocalDateTime.now();
 		// read arguments
 		Mode mode = getMode(args);
 		// based on the arguments, choose the right option
