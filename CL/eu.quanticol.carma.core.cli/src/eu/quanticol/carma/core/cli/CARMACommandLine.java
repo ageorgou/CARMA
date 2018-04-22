@@ -674,7 +674,7 @@ public class CARMACommandLine {
 			return;
 		}
 		SimulationOutcome result = sim.getResult(0);
-		String fileSuffix = experimentDateTime.format(DateTimeFormatter.ofPattern("d_M_YY__kkmmss"));
+		String fileSuffix = experimentDateTime.format(DateTimeFormatter.ofPattern("d_M_YY__HHmmss"));
 		Path outputBase;
 		if (outputFolder == null)
 			outputBase = Paths.get("results").resolve(sim.getName() + fileSuffix);
