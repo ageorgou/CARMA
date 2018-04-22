@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -104,7 +105,11 @@ public class MultivestaExperiment {
 	}
 	
 	private static Map<String,String> defaultConfiguration() {
-		Map<String,String> config = new HashMap<String,String>();
+		// We use a LinkedHashMap to preserve the order in which arguments are
+		// specified. This matters when passing generic arguments, so that
+		// the flag and its value are not separated when iterating through
+		// the map (which could happen with a base HashMap).
+		Map<String,String> config = new LinkedHashMap<String,String>();
 		//config.put("-c",null);
 		config.put("-sm", "false");
 		config.put("-l", "1");

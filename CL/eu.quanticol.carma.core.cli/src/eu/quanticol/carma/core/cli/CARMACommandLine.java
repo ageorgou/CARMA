@@ -298,7 +298,7 @@ public class CARMACommandLine {
 				// to MultiVeStA without any processing. This can lead to errors,
 				// but it allows the user full access to the MultiVeStA parameters
 				// which are otherwise not catered for here.
-				// Note that We treat each command line argument separately, whether
+				// Note that we treat each command line argument separately, whether
 				// it is an option or the previous option's argument, but this
 				// should not affect the end behaviour.
 				System.out.println("Unrecognised option: " + args[i]
