@@ -720,7 +720,7 @@ public class CARMACommandLine {
 		}
 		
 		// Same for execution time (simulations only):
-		timeFile = outputBase.resolve("simulationTimeInSeconds");
+		timeFile = outputBase.resolve("simulationTimeInSeconds" + fileSuffix);
 		if (Files.exists(timeFile)) {
 			warn("will overwrite file " + timeFile + ".");
 		}
